@@ -8,9 +8,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "cors": "^2.8.5",
+    "express": "^5.1.0",
     "oracledb": "^6.8.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sams2003/express-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sams2003/express-api/issues"
+  },
+  "homepage": "https://github.com/Sams2003/express-api#readme",
+  "description": ""
 }

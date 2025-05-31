@@ -1,40 +1,41 @@
 const express = require('express')
 const oracledb = require('oracledb')
-const CORS = require('cors')
+//const CORS = require('cors')
 
-
-
-
-
-
-
+//1. variables de la api
 
 const app = express()
 const port = 3000
+
 const dbConfig = {
     user: 'ferreteria',
     password : 'ferreteria',
-    connectString: 'localhost'
+    connectString: 'localhost/orcl1'
+}
+
+const API_KEY = 'ferreadmin123';
+
+function validarApiKey(req, res, next){
+    const apiKey = req.headers['x-api-key']
+    if(!apiKey || apiKey !== API_KEY){
+        return res.status(401).json({error: "API KEY incorrecta o no entregada"})
+    }
+    next()
 }
 
 
-
-
-
-
-
-
+//2. Middleware
 app.use(express.json())
-app.use(cors())
+//app.use(cors())
 
 
+//3. Endpoints
+app.get('/', (req, res) => {
+    res.status(200).json( {"mensaje": "Hola express 2"} )
+})
 
 
-
-
-
-
-app.get('/personas',async(req,res) => {
+app.get('/personas', validarApiKey ,async(req,res) => {
     let cone
     try{
         cone = await oracledb.getConnection(dbConfig)
@@ -44,19 +45,12 @@ app.get('/personas',async(req,res) => {
             nombre: row[1],
             appaterno: row[2],
             apmaterno: row[3],
-            correo: row[6],
-            genero: row[7],
-            fec_nac: row[8],
-            telefono: row[9],
-            direccion: row[10]
+            correo: row[4],
+            genero: row[5],
+            fec_nac: row[6],
+            telefono: row[7],
+            direccion: row[8]
         })))
-
-
-
-
-
-
-
 
     } catch (ex){
         res.status(500).json({error: ex.message})
@@ -65,33 +59,27 @@ app.get('/personas',async(req,res) => {
     }
 })
 
-
-
-
-
-
-
-
-app.get('/persona/:rut', async(req,res) =>{
+app.get('/personas/:rut', validarApiKey, async(req,res) =>{
     let cone
     const rut = parseInt(req.params.rut)
     try{
         cone= await oracledb.getConnection(dbConfig)
         const result = await cone.execute("Select * From persona Where rut = :rut", [rut])
-        if(result.rows.length==0){
+
+        if(result.rows.length===0){
             res.status(404).json({mensaje: "Persona no encontrada"})
         }else{
-            const row = result.row[0]
+            const row = result.rows[0]
             res.json({
                 rut: row[0],
                 nombre: row[1],
                 appaterno: row[2],
                 apmaterno: row[3],
-                correo: row[6],
-                genero: row[7],
-                fec_nac: row[8],
-                telefono: row[9],
-                direccion: row[10]
+                correo: row[4],
+                genero: row[5],
+                fec_nac: row[6],
+                telefono: row[7],
+                direccion: row[8]
             })
         }
     }catch (error){
@@ -101,16 +89,11 @@ app.get('/persona/:rut', async(req,res) =>{
     }
 })
 
-
-
-
-
-
-
-
-app.post('/persona', async(req,res) =>{
+app.post('/personas',validarApiKey, async(req,res) =>{
     let cone
     const {rut,nombre,appaterno,apmaterno,correo,genero,fec_nac,telefono,direccion} = req.body
+    console.log("REQ BODY:", req.body); // 👈 Esto debería imprimirse en consola al hacer el POST
+
     try{
         cone = await oracledb.getConnection(dbConfig)
         await cone.execute(
@@ -119,11 +102,8 @@ app.post('/persona', async(req,res) =>{
             {rut, nombre, appaterno, apmaterno, correo, genero, fec_nac, telefono, direccion},
             {autoCommit: true}
         )
+
         res.status(201).json({mensaje: "Persona Creada"})
-
-
-
-
     }catch(error){
         res.status(500).json({error: error.message})
     }finally{
@@ -131,24 +111,24 @@ app.post('/persona', async(req,res) =>{
     }
 })
 
-
-
-
-app.put('personas/:rut', async(req, res)=>{
+app.put('/personas/:rut',validarApiKey, async(req, res)=>{
     let cone
     const rut = parseInt(req.params.rut)
     const {nombre,appaterno,apmaterno,correo,genero,fec_nac,telefono,direccion} = req.body
     try{
         cone = await oracledb.getConnection(dbConfig)
         const result = await cone.execute(`UPDATE persona
-            Set nombre = :nombre, appaterno = :appaterno, apmaterno = :apmaterno, correo = :correo, genero = :genero, fec_nac = :fec_nac, telefono = :telefono, direccion = :direccion
+            Set nombre = :nombre, appaterno = :appaterno, apmaterno = :apmaterno, correo = :correo,
+            genero = :genero, fec_nac = :fec_nac, telefono = :telefono, direccion = :direccion
             WHERE rut = :rut`,
             {rut, nombre, appaterno, apmaterno, correo, genero, fec_nac, telefono, direccion},
             {autoCommit: true})
         if(result.rowsAffected===0){
             res.status(404).json({mensaje: "Persona no encontrada"})
+        }else{
+            res.json({mensaje: "Usuario actualizado con éxito"})
         }
-    }catch{
+    }catch (error){
        res.status(500).json({error: error.message})
     }finally{
         if (cone) cone.close()
@@ -161,14 +141,14 @@ app.delete('/personas/:rut', async (req, res)=>{
     const rut = parseInt(req.params.rut)
     try{
         cone = await oracledb.getConnection(dbConfig)
-        const result = await cone.execute(`DELETE * FROM persona WHERE rut = :rut`,
+        const result = await cone.execute(`DELETE FROM persona WHERE rut = :rut`,
             [rut],
             {autoCommit: true}
         )
         if(result.rowsAffected===0){
-            res.status(404).json({mensaje: "Persona no encontrada"})
+            res.status(404).json({mensaje: "Usuario no encontrado"})
         }else{
-            res.json({mensaje: "Persona eliminada"})
+            res.json({mensaje: "Usuario eliminado"})
         }
 
 
@@ -218,15 +198,18 @@ app.patch('/personas/:rut', async(req,res) => {
         }
         if (direccion !==undefined){
             campos.push('direccion = :direccion')
-            valores.nombre = direccion
+            valores.direccion = direccion
+        }
+        if(campos.length===0){
+            res.status(400).json({mensaje: 'No se enviaron campos para actualizar'})
         }
         valores.rut = rut
-        const sql = `UPDATE alumno SET ${campos.join(', ')} WHERE rut = :rut`
+        const sql = `UPDATE persona SET ${campos.join(', ')} WHERE rut = :rut`
         const result = await cone.execute(sql, valores, {autoCommit: true})
         if(result.rowsAffected===0){
-            res.status(404).json({mensaje: "persona no existe"})
+            res.status(404).json({mensaje: "El usuario no existe"})
         }else{
-            res.json({mensaje: "Persona actualizado parcialmente"})
+            res.json({mensaje: "El usuario se actualizo parcialmente"})
         }
     }catch (error) {
         res.status(500).json({error:error.message})
@@ -235,11 +218,6 @@ app.patch('/personas/:rut', async(req,res) => {
     }
 })
 
-
-
-
-
-
-
-
-
+app.listen(port, () => {
+    console.log(`API escuchando en puerto ${port}`);
+})
