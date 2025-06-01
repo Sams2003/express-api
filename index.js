@@ -1,6 +1,6 @@
 const express = require('express')
 const oracledb = require('oracledb')
-//const CORS = require('cors')
+const cors = require('cors')
 
 //1. variables de la api
 
@@ -26,7 +26,7 @@ function validarApiKey(req, res, next){
 
 //2. Middleware
 app.use(express.json())
-//app.use(cors())
+app.use(cors())
 
 
 //3. Endpoints
